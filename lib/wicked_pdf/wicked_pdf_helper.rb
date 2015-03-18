@@ -10,6 +10,7 @@ module WickedPdfHelper
   end
 
   def wicked_pdf_stylesheet_link_tag(*sources)
+    Rails.logger.info "Hey, I'm not being recognized"
     css_dir = WickedPdfHelper.root_path.join('public', 'stylesheets')
     css_text = sources.collect { |source|
       source = WickedPdfHelper.add_extension(source, 'css')
@@ -37,6 +38,7 @@ module WickedPdfHelper
     ASSET_URL_REGEX = /url\(['"](.+)['"]\)(.+)/
 
     def wicked_pdf_stylesheet_link_tag(*sources)
+      Rails.logger.info "Yay, I was recognized!!"
       stylesheet_contents = sources.collect do |source|
         source = WickedPdfHelper.add_extension(source, 'css')
         "<style type='text/css'>#{read_asset(source)}</style>"
@@ -77,14 +79,27 @@ module WickedPdfHelper
     URI_REGEXP = %r{^[-a-z]+://|^(?:cid|data):|^//}
 
     def asset_pathname(source)
+      Rails.logger.info "I'm in asset_pathname"
+      Rails.logger.info source
       if precompiled_asset?(source)
-        if (pathname = set_protocol(asset_path(source))) =~ URI_REGEXP
+        Rails.logger.info "I'm again a precompiled asset"
+        pathname = set_protocol(asset_path(source))
+        Rails.logger.info "Asset url?"
+        Rails.logger.info asset_path(source)
+        Rails.logger.info "Pathname?"
+        Rails.logger.info pathname
+        Rails.logger.info "Pass regex?"
+        Rails.logger.info pathname =~ URI_REGEXP
+        if pathname =~ URI_REGEXP
+          Rails.logger.info "I passed the regex!"
           # asset_path returns an absolute URL using asset_host if asset_host is set
           pathname
         else
+          Rails.logger.info "Crap, I didn't pass the regex!"
           File.join(Rails.public_path, asset_path(source).sub(/\A#{Rails.application.config.action_controller.relative_url_root}/, ''))
         end
       else
+        Rails.logger.info "Crap, I'm not a precompiled asset for some reason"
         Rails.application.assets.find_asset(source).pathname
       end
     end
@@ -92,12 +107,20 @@ module WickedPdfHelper
     # will prepend a http or default_protocol to a protocol relative URL
     # or when no protcol is set.
     def set_protocol(source)
+      Rails.logger.info "Now in set_protocol!"
+      Rails.logger.info source
       protocol = WickedPdf.config[:default_protocol] || 'http'
+      Rails.logger.info "Protocol?"
+      Rails.logger.info protocol
       if source[0, 2] == '//'
+        Rails.logger.info "In first if"
         source = [protocol, ':', source].join
-      elsif !source[0, 7].include?('://')
+      elsif !source[0, 8].include?('://')
+        Rails.logger.info "In elseif"
         source = [protocol, '://', source].join
       end
+      Rails.logger info "Final source"
+      Rails.logger.info source
       source
     end
 
@@ -106,19 +129,27 @@ module WickedPdfHelper
     end
 
     def read_asset(source)
+      Rails.logger.info "Ok, I'm in read asset"
       if precompiled_asset?(source)
+        Rails.logger.info "Ok, I'm a precompiled asset"
         if set_protocol(asset_path(source)) =~ URI_REGEXP
+          Rails.logger.info "Source?"
+          Rails.logger.info source
           read_from_uri(source)
         else
           IO.read(asset_pathname(source))
         end
       else
+        Rails.logger.info "Not precompiled, crap"
         Rails.application.assets.find_asset(source).to_s
       end
     end
 
     def read_from_uri(source)
+      Rails.logger.info "Im in the read_from_uri method!"
+      Rails.logger.info source
       encoding = ':UTF-8' if RUBY_VERSION > '1.8'
+      Rails.logger.info asset_pathname(source)
       asset = open(asset_pathname(source), "r#{encoding}") { |f| f.read }
       asset = gzip(asset) if WickedPdf.config[:expect_gzipped_remote_assets]
       asset
